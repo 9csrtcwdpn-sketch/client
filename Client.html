@@ -484,6 +484,46 @@ label:first-child{margin-top:0}
   background:var(--black);color:var(--black-fg);padding:8px 16px;border-radius:20px;font-size:13.5px;
   opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60;max-width:88%;text-align:center;box-shadow:var(--shadow)
 }
+
+/* 顶部 聊天 | OpenCode 切换胶囊 */
+.seg{
+  display:inline-flex;align-items:center;padding:3px;border-radius:21px;
+  background:var(--glass);border:1px solid var(--glass-border);
+  box-shadow:var(--shadow-sm),inset 0 1px 0 var(--glass-line);
+  backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%)
+}
+.seg button{
+  padding:5px 14px;border-radius:17px;font-size:14px;font-weight:500;color:var(--fg2);
+  transition:background .18s,color .18s,transform .12s;white-space:nowrap
+}
+.seg button:active{transform:scale(.95)}
+.seg button.on{background:var(--card);color:var(--fg);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+
+/* OpenCode 后端工作台面板 */
+#ocView{display:none;flex:1 1 auto;min-height:0;flex-direction:column;background:var(--bg2);position:relative;z-index:2}
+#ocView.on{display:flex}
+.oc-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+  padding:7px 14px;background:var(--surface);border-bottom:1px solid var(--line);font-size:13px;flex:none
+}
+.oc-st{display:inline-flex;align-items:center;gap:6px;font-weight:500;color:var(--fg)}
+.oc-dot{width:8px;height:8px;border-radius:50%;background:var(--mute);flex:none}
+.oc-dot.ok{background:var(--ok)}
+.oc-dot.err{background:var(--bad)}
+.oc-acts{display:flex;align-items:center;gap:6px}
+.oc-btn{padding:4.5px 10px;border-radius:9px;border:1px solid var(--line);background:var(--bg2);font-size:12.5px;color:var(--fg)}
+.oc-btn:hover,.oc-btn:active{background:var(--card)}
+.oc-btn.pri{background:var(--black);color:var(--black-fg);border-color:var(--black)}
+#ocFrame{flex:1 1 auto;width:100%;height:100%;border:0;background:#fff;display:none}
+#ocFrame.on{display:block}
+.oc-empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:24px;gap:10px
+}
+.oc-empty h3{margin:0;font-size:18px;font-weight:600}
+.oc-empty p{margin:0;font-size:13.5px;color:var(--mute);max-width:360px;line-height:1.6}
+.oc-empty-acts{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;justify-content:center}
+
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
@@ -493,10 +533,10 @@ label:first-child{margin-top:0}
     <button class="g-btn" id="hist" title="菜单" aria-label="菜单">
       <svg viewBox="0 0 24 24"><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="14" y2="15"/></svg>
     </button>
-    <button class="model-pill" id="topModelBtn" title="切换模型与参数">
-      <span class="mp-name" id="topModelName">Client</span>
-      <span class="mp-arr">▾</span>
-    </button>
+    <div class="seg" id="tabSeg">
+      <button data-tab="chat" class="on">聊天</button>
+      <button data-tab="oc">OpenCode</button>
+    </div>
     <div class="top-right">
       <button id="new" title="新对话" aria-label="新对话">
         <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -507,6 +547,27 @@ label:first-child{margin-top:0}
     </div>
   </header>
 
+  <div id="ocView">
+    <div class="oc-bar">
+      <div class="oc-st"><span class="oc-dot" id="ocDot"></span><span id="ocStTxt">正在检测电脑 OpenCode…</span></div>
+      <div class="oc-acts">
+        <button class="oc-btn" id="ocReload">刷新</button>
+        <button class="oc-btn" id="ocCfgBtn">地址</button>
+        <button class="oc-btn pri" id="ocOpenExt">独立窗口</button>
+      </div>
+    </div>
+    <iframe id="ocFrame" title="OpenCode"></iframe>
+    <div class="oc-empty" id="ocEmpty">
+      <h3>未检测到电脑上的 OpenCode</h3>
+      <p>在电脑开始菜单点击 <strong>启动OpenCode</strong>（弹出后保持后台不关），再点下方重试连接即可在 Client 里直接使用。</p>
+      <p style="font-size:12px">当前地址：<span id="ocUrlShow">http://127.0.0.1:4096</span></p>
+      <div class="oc-empty-acts">
+        <button class="oc-btn pri" id="ocRetry">重试连接</button>
+        <button class="oc-btn" id="ocEditUrl">修改连接地址</button>
+        <button class="oc-btn" id="ocDirectOpen">新标签页打开</button>
+      </div>
+    </div>
+  </div>
   <div id="list"><div class="list-inner" id="listIn"></div></div>
   <button id="toBot" aria-label="回到底部">↓</button>
 
@@ -576,6 +637,10 @@ label:first-child{margin-top:0}
     <button class="d-item" data-nav="webcfg">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z"/></svg>
       <span>联网搜索设置</span><span class="badge" id="b-web"></span>
+    </button>
+    <button class="d-item" data-nav="gh">
+      <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      <span>GitHub 仓库直连</span><span class="badge" id="b-gh"></span>
     </button>
   </div>
   <div class="d-list" id="dlist"></div>
@@ -744,6 +809,7 @@ let cfg=Object.assign({
   ctxOn:true,ctxTurns:30,memOn:false,autoExpandThink:false,autoExpandCode:false,
   effort:2,dsNativeParams:true,temp:1.0,maxTokens:0,
   webOn:false,webProvider:'auto',webKey:'',webUrl:'',
+  tab:'chat',ocUrl:'http://127.0.0.1:4096',ghRepo:'9csrtcwdpn-sketch/client',ghToken:'',
   priceCustom:false,priceMiss:0,priceHit:0,priceOut:0,fxRate:7.2,
   theme:'auto',nick:'',style:'',sys:''
 },ls.get('cfg',{}));
@@ -825,9 +891,24 @@ function calcCost(meta){
 const fmtYuan=v=>v<0.0001?'¥0.0000':('¥'+v.toFixed(v<0.1?4:3));
 
 /* ---- 联网搜索模块（支持免费内置免 Key 搜索 + Tavily / Bocha / Serper / SearXNG 实时全网搜索） ---- */
+async function fetchUrlReadable(u){
+  try{
+    const r=await fetch('https://r.jina.ai/'+u,{headers:{'Accept':'text/plain'}});
+    if(!r.ok)return null;
+    const t=(await r.text()).trim();
+    if(!t)return null;
+    const title=(t.match(/^Title:\s*(.+)$/m)?.[1]||u).trim();
+    return{title,url:u,snippet:t.slice(0,3500)};
+  }catch{return null}
+}
 async function runWebSearch(query){
-  const q=(query||'').trim().slice(0,220);
+  const q=(query||'').trim().slice(0,300);
   if(!q)return{items:[],note:''};
+  const urls=(q.match(/https?:\/\/[^\s<>()]+/g)||[]).slice(0,2);
+  if(urls.length){
+    const pages=(await Promise.all(urls.map(fetchUrlReadable))).filter(Boolean);
+    if(pages.length)return{items:pages,note:'已自动读取网页全文（'+pages.length+' 个链接）'};
+  }
   const prov=cfg.webProvider||'auto',key=(cfg.webKey||'').trim();
   try{
     if((prov==='tavily'||(prov==='auto'&&key&&key.startsWith('tvly-')))&&key){
@@ -916,6 +997,7 @@ function renderCodeCard(info,code,mkey,idx){
     '</div>'+
     '<div class="file-bar">'+
       '<button class="fbtn pri" data-fdl="'+storeId+'">保存文件</button>'+
+      (cfg.ghToken&&cfg.ghRepo?'<button class="fbtn" data-fgh="'+storeId+'">推到 GitHub</button>':'')+
       (isHtml?'<button class="fbtn" data-fprev="'+storeId+'">预览</button>':'')+
       '<button class="fbtn" data-fcp="'+storeId+'">复制</button>'+
       '<button class="fbtn" data-ftog="'+storeId+'">'+(open?'收起代码':'展开代码')+'</button>'+
@@ -1269,12 +1351,16 @@ function msgHtml(m,i){
     acts+det+'</div>'}
 
 function syncBarUI(){
-  const s=cur(),ef=curEff();
-  $('#topModelName').textContent=s?s.m:'选择模型';
+  const ef=curEff(),isOc=cfg.tab==='oc';
+  document.querySelectorAll('#tabSeg button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(isOc?'oc':'chat')));
+  $('#ocView').classList.toggle('on',isOc);
+  $('#list').style.display=isOc?'none':'block';
+  document.querySelector('.composer-wrap').style.display=isOc?'none':'block';
+  if(isOc)$('#toBot').classList.remove('on');
   $('#webBtn').classList.toggle('web-on',!!cfg.webOn);
   $('#boltBtn').classList.toggle('bolt-on',!ef.think);
   $('#dialBadge').textContent=ef.short;
-  $('#ta').placeholder=cfg.webOn?'联网搜索并提问…':'有问题，尽管问';
+  $('#ta').placeholder=cfg.webOn?'联网搜索或贴网页链接提问…':'有问题，尽管问';
 }
 function render(force){
   syncBarUI();
@@ -1343,6 +1429,8 @@ $('#list').onclick=e=>{
     return}
   const dl=e.target.closest('[data-fdl]');
   if(dl){const it=codeStore[+dl.dataset.fdl];if(it)downloadFile(it.fname,it.code,it.isHtml?'text/html;charset=utf-8':'text/plain;charset=utf-8');return}
+  const fgh=e.target.closest('[data-fgh]');
+  if(fgh){const it=codeStore[+fgh.dataset.fgh];if(it)pushFileToGitHub(it.fname,it.code);return}
   const fcp=e.target.closest('[data-fcp]');
   if(fcp){const it=codeStore[+fcp.dataset.fcp];if(it)copyText(it.code).then(()=>toast('已复制代码')).catch(()=>toast('复制失败'));return}
   const pv=e.target.closest('[data-fprev]');
@@ -1427,7 +1515,115 @@ function renderEffortPanel(){
 function openEffort(){$('#effortMask').classList.add('on');requestAnimationFrame(renderEffortPanel)}
 function closeEffort(){$('#effortMask').classList.remove('on')}
 $('#effortTrigger').onclick=openEffort;
-$('#topModelBtn').onclick=openModels;
+/* ---- OpenCode 本地/远程后端工作台 ---- */
+let ocLoadedUrl='';
+function ocCleanUrl(){return(cfg.ocUrl||'http://127.0.0.1:4096').trim().replace(/\/+$/,'')}
+async function checkAndLoadOpenCode(forceReload=false){
+  const u=ocCleanUrl();
+  $('#ocUrlShow').textContent=u;
+  $('#ocDot').className='oc-dot';
+  $('#ocStTxt').textContent='正在连接 '+u+' …';
+  try{
+    const c=new AbortController();const tm=setTimeout(()=>c.abort(),2500);
+    await fetch(u,{mode:'no-cors',signal:c.signal});
+    clearTimeout(tm);
+    $('#ocDot').className='oc-dot ok';
+    $('#ocStTxt').textContent='OpenCode 已连接（'+u+'）';
+    $('#ocEmpty').style.display='none';
+    const fr=$('#ocFrame');
+    if(forceReload||ocLoadedUrl!==u){fr.src=u;ocLoadedUrl=u}
+    fr.classList.add('on');
+  }catch{
+    $('#ocDot').className='oc-dot err';
+    $('#ocStTxt').textContent='未检测到 OpenCode 服务';
+    $('#ocFrame').classList.remove('on');
+    $('#ocEmpty').style.display='flex';
+  }
+}
+function openOcConfig(){
+  const P=$('#pmod');
+  P.innerHTML='<div class="panel-bar"></div><h3>OpenCode 后端连接</h3>'+
+    '<div class="card">'+
+      '<label>OpenCode 地址</label>'+
+      '<input id="ocUrlIn" value="'+esc(ocCleanUrl())+'" placeholder="http://127.0.0.1:4096" autocapitalize="off" autocorrect="off">'+
+      '<div style="font-size:12px;color:var(--mute);margin-top:6px;line-height:1.5">电脑本机默认填 <code>http://127.0.0.1:4096</code>；先在开始菜单点「启动OpenCode」即可自动连上。</div>'+
+    '</div>'+
+    '<div class="row"><button class="btn p" id="saveOc">保存并连接</button><button class="btn" id="closeMod">取消</button></div>';
+  $('#smod').classList.add('on');
+  $('#saveOc').onclick=()=>{cfg.ocUrl=$('#ocUrlIn').value.trim()||'http://127.0.0.1:4096';save();$('#smod').classList.remove('on');checkAndLoadOpenCode(true)};
+  $('#closeMod').onclick=()=>$('#smod').classList.remove('on');
+}
+$('#tabSeg').onclick=e=>{
+  const b=e.target.closest('[data-tab]');if(!b)return;
+  cfg.tab=b.dataset.tab;save();syncBarUI();
+  if(cfg.tab==='oc')checkAndLoadOpenCode(false);
+};
+$('#ocReload').onclick=()=>checkAndLoadOpenCode(true);
+$('#ocRetry').onclick=()=>checkAndLoadOpenCode(true);
+$('#ocCfgBtn').onclick=openOcConfig;
+$('#ocEditUrl').onclick=openOcConfig;
+$('#ocOpenExt').onclick=()=>window.open(ocCleanUrl(),'_blank','noopener');
+$('#ocDirectOpen').onclick=()=>window.open(ocCleanUrl(),'_blank','noopener');
+
+/* ---- GitHub 仓库直连（手机免开电脑直接读/推代码） ---- */
+async function ghApi(path,opt={}){
+  const tk=(cfg.ghToken||'').trim(),repo=(cfg.ghRepo||'').trim();
+  if(!tk||!repo)throw new Error('请先在侧边栏「GitHub 仓库直连」填好仓库和 Token');
+  const r=await fetch('https://api.github.com/repos/'+repo+path,{
+    ...opt,
+    headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+tk,'Content-Type':'application/json',...(opt.headers||{})}
+  });
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.message||('GitHub HTTP '+r.status));
+  return j;
+}
+function utf8ToB64(str){const bytes=new TextEncoder().encode(str);let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));return btoa(bin)}
+function b64ToUtf8(b64){const bin=atob(b64.replace(/\n/g,''));const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));return new TextDecoder().decode(bytes)}
+async function pushFileToGitHub(fname,code){
+  if(!confirm('把「'+fname+'」直接提交推送到 GitHub 仓库 '+cfg.ghRepo+'？'))return;
+  toast('正在推送到 GitHub…');
+  try{
+    let sha=null;
+    try{const cur=await ghApi('/contents/'+encodeURIComponent(fname));sha=cur.sha}catch{}
+    const payload={message:'Update '+fname+' via Client',content:utf8ToB64(code)};
+    if(sha)payload.sha=sha;
+    await ghApi('/contents/'+encodeURIComponent(fname),{method:'PUT',body:JSON.stringify(payload)});
+    toast('已推送到 GitHub：'+fname);
+  }catch(err){toast('推送失败：'+err.message)}
+}
+async function openGitHubPanel(){
+  const P=$('#pmod');
+  P.innerHTML='<div class="panel-bar"></div><h3>GitHub 仓库直连</h3>'+
+    '<div class="card">'+
+      '<label>仓库名称（用户名/仓库名）</label>'+
+      '<input id="ghRepoIn" value="'+esc(cfg.ghRepo||'9csrtcwdpn-sketch/client')+'" placeholder="9csrtcwdpn-sketch/client" autocapitalize="off" autocorrect="off">'+
+      '<label>GitHub Personal Access Token（具备 repo 权限）</label>'+
+      '<input id="ghTokIn" type="password" value="'+esc(cfg.ghToken||'')+'" placeholder="ghp_xxxx 或 github_pat_xxxx" autocapitalize="off" autocorrect="off">'+
+      '<div class="row"><button class="btn p" id="saveGh">保存</button><button class="btn" id="loadGhFiles">读取仓库文件</button></div>'+
+    '</div>'+
+    '<div id="ghFileList"></div>';
+  $('#smod').classList.add('on');
+  $('#saveGh').onclick=()=>{cfg.ghRepo=$('#ghRepoIn').value.trim();cfg.ghToken=$('#ghTokIn').value.trim();save();drawDrawer();render();toast('GitHub 配置已保存')};
+  $('#loadGhFiles').onclick=async()=>{
+    cfg.ghRepo=$('#ghRepoIn').value.trim();cfg.ghToken=$('#ghTokIn').value.trim();save();
+    const box=$('#ghFileList');box.innerHTML='<div style="text-align:center;color:var(--mute);padding:12px">正在读取仓库文件…</div>';
+    try{
+      const arr=await ghApi('/contents/');
+      const files=(Array.isArray(arr)?arr:[]).filter(x=>x.type==='file');
+      box.innerHTML=files.length?files.map(f=>'<div class="mem-item"><div><div style="font-weight:600">'+esc(f.name)+'</div><div style="font-size:12px;color:var(--mute)">'+(f.size<1024?f.size+' B':(f.size/1024).toFixed(1)+' KB')+'</div></div><button class="fbtn pri" data-ghpull="'+esc(f.path)+'">拉进对话</button></div>').join(''):'<div style="text-align:center;color:var(--mute);padding:12px">仓库里还没有文件</div>';
+      box.querySelectorAll('[data-ghpull]').forEach(b=>b.onclick=async()=>{
+        const p=b.dataset.ghpull;b.textContent='读取中…';
+        try{
+          const d=await ghApi('/contents/'+encodeURIComponent(p));
+          const txt=b64ToUtf8(d.content||'').slice(0,200000);
+          att.push({kind:'text',name:d.name,text:txt});drawAtts();
+          $('#smod').classList.remove('on');cfg.tab='chat';save();syncBarUI();
+          toast('已拉取：'+d.name+'，可直接发给 AI 分析');
+        }catch(err){toast('读取失败：'+err.message);b.textContent='拉进对话'}
+      });
+    }catch(err){box.innerHTML='<div class="err-box">'+esc(err.message)+'</div>'}
+  };
+}
 $('#effortMask').onclick=e=>{if(e.target.id==='effortMask')closeEffort()};
 $('#effortHead').onclick=openModels;
 $('#advModel').onclick=openModels;
@@ -1598,6 +1794,7 @@ function drawDrawer(){
   const libCount=collectLibrary().length;
   $('#b-lib').textContent=libCount?(libCount+''):'';
   $('#b-web').textContent=cfg.webKey?'已配 Key':'免 Key';
+  $('#b-gh').textContent=cfg.ghToken?'已连接':'未配置';
   const q=($('#qhist').value||'').trim().toLowerCase();
   const all=[...convs].filter(c=>!q||c.title.toLowerCase().includes(q));
   const pinned=all.filter(c=>c.pinned).sort((a,b)=>b.ts-a.ts);
@@ -1631,6 +1828,7 @@ document.querySelector('.d-nav').onclick=e=>{
   if(k==='lib')openLibrary();
   else if(k==='prompts')openCustom();
   else if(k==='webcfg')openWebConfig();
+  else if(k==='gh')openGitHubPanel();
 };
 
 function openModels(){
@@ -1868,7 +2066,7 @@ $('#ps').onclick=async e=>{
     try{const ms=await listModels(c);if(!channels.includes(c))return;c.models=ms;if(sel?.ch===c.id&&!c.models.includes(sel.m))sel=null;save();toast('获取到 '+ms.length+' 个模型');const t=document.querySelector('.card[data-id="'+c.id+'"] [data-k=models]');if(t)t.value=ms.join('\n');render()}catch(err){toast(err.message.slice(0,80))}
     b.disabled=false;b.textContent='获取模型列表'}};
 
-render();if(!channels.length)setTimeout(()=>{if(!channels.length){channels.push({id:uid(),name:'我的接口',type:'openai',base:BASE.openai,key:'',models:[]});save();openApiModal()}},300);
+render();if(cfg.tab==='oc')checkAndLoadOpenCode(false);if(!channels.length)setTimeout(()=>{if(!channels.length){channels.push({id:uid(),name:'我的接口',type:'openai',base:BASE.openai,key:'',models:[]});save();openApiModal()}},300);
 </script>
 </body>
 </html>
