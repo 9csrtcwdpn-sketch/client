@@ -317,6 +317,10 @@ body.kb-open .composer-wrap{padding-bottom:8px}
 .d-search-wrap.on{display:block}
 .d-search-wrap input{width:100%;padding:9px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg2);outline:none;font-size:14.5px}
 .d-nav{display:flex;flex-direction:column;gap:2px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.d-stats{margin:0 0 8px;padding:9px 11px;border-radius:14px;background:var(--bg2);border:1px solid var(--line);font-size:12.5px}
+.d-stats .ds-t{display:flex;align-items:center;justify-content:space-between;font-weight:600;color:var(--fg);margin-bottom:5px}
+.d-stats .ds-r{display:flex;align-items:center;justify-content:space-between;color:var(--fg2);padding:1px 0}
+.d-stats .ds-r span:last-child{color:var(--fg);font-variant-numeric:tabular-nums}
 .d-item{display:flex;align-items:center;gap:12px;padding:10px 10px;border-radius:12px;font-size:15px;font-weight:500;color:var(--fg);text-align:left;transition:background .12s}
 .d-item:hover,.d-item:active{background:var(--card)}
 .d-item svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -643,6 +647,7 @@ label:first-child{margin-top:0}
       <span>GitHub 仓库直连</span><span class="badge" id="b-gh"></span>
     </button>
   </div>
+  <div class="d-stats" id="dStats"></div>
   <div class="d-list" id="dlist"></div>
   <div class="d-foot">
     <button class="new-pill" id="dNewBtn">
@@ -1789,6 +1794,28 @@ function openLibrary(){
   $('#smod').classList.add('on');
   P.querySelectorAll('[data-libdl]').forEach(b=>b.onclick=()=>{const it=items[+b.dataset.libdl];if(it)downloadFile(it.fname,it.code,it.isHtml?'text/html;charset=utf-8':'text/plain;charset=utf-8')});
 }
+const fmtTok=n=>{n=Math.round(Number(n)||0);return n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(n)};
+function renderTokenStats(){
+  const el=$('#dStats');if(!el)return;
+  const us=calcUsage();
+  el.innerHTML='<div class="ds-t"><span>Token 消耗</span><span style="font-weight:400;font-size:11px;color:var(--mute)">入 / 出</span></div>'+
+    '<div class="ds-r"><span>聊天</span><span>'+fmtTok(us.tokIn)+' / '+fmtTok(us.tokOut)+'</span></div>'+
+    '<div class="ds-r" id="dOcTok"><span>OpenCode</span><span>读取中…</span></div>';
+}
+async function loadOcToken(){
+  const el=$('#dOcTok');if(!el)return;
+  const c=new AbortController();const tm=setTimeout(()=>c.abort(),2500);
+  try{
+    const r=await fetch(ocCleanUrl()+'/api/experimental/session/stats',{headers:{'Accept':'application/json'},signal:c.signal});
+    clearTimeout(tm);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();const info=j&&j.info||j;const t=info&&info.tokens||{};
+    el.innerHTML='<span>OpenCode</span><span>'+fmtTok(t.input)+' / '+fmtTok(t.output)+'</span>';
+  }catch(e){
+    clearTimeout(tm);
+    el.innerHTML='<span>OpenCode</span><span>未连接</span>';
+  }
+}
 function drawDrawer(){
   $('#duav').textContent=(cfg.nick||'我').slice(0,1);
   const libCount=collectLibrary().length;
@@ -1804,8 +1831,9 @@ function drawDrawer(){
   if(pinned.length){html+='<div class="d-sec">置顶</div>'+pinned.map(row).join('')+'<div class="d-hr"></div>'}
   html+=normal.length?normal.map(row).join(''):(!pinned.length?'<div style="text-align:center;color:var(--mute);padding:24px 0;font-size:13.5px">没有匹配的对话</div>':'');
   $('#dlist').innerHTML=html;
+  renderTokenStats();
 }
-function openDrawer(){drawDrawer();$('#dmask').classList.add('on');$('#drawer').classList.add('on');$('#app').classList.add('shifted')}
+function openDrawer(){drawDrawer();loadOcToken();$('#dmask').classList.add('on');$('#drawer').classList.add('on');$('#app').classList.add('shifted')}
 function closeDrawer(){$('#dmask').classList.remove('on');$('#drawer').classList.remove('on');$('#app').classList.remove('shifted')}
 $('#hist').onclick=openDrawer;
 $('#dmask').onclick=closeDrawer;
