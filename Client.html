@@ -1298,7 +1298,7 @@ function thinkLabelText(m){
 function msgHtml(m,i){
   if(m.role==='user')return'<div class="u-wrap"><div class="u" data-u="'+i+'">'+attHtml(m)+esc(m.text)+'</div></div>';
   const d=m.meta,wait=m.streaming&&!m.text,open=m.to??cfg.autoExpandThink;
-  const rk=d?(d.rm.startsWith('（')?'':same(d.req,d.rm)?'ok':'diff'):'';
+  const rk=d&&d.req&&d.rm?(d.rm.startsWith('（')?'':same(d.req,d.rm)?'ok':'diff'):'';
   const mkey=cid+'_'+i;
   let bodyHtml='';
   if(m.err){bodyHtml=(m.partial?'<div class="t">'+md(m.partial,false,mkey)+'</div>':'')+'<div class="err-box">'+esc(m.text)+'</div>'}
@@ -1364,6 +1364,7 @@ function syncBarUI(){
 }
 function render(force){
   syncBarUI();
+  codeStore=[];
   const L=$('#list'),IN=$('#listIn'),y=L.scrollTop,near=L.scrollHeight-y-L.clientHeight<90;
   if(!msgs.length){
     const s=cur();
@@ -1371,7 +1372,6 @@ function render(force){
     IN.innerHTML='<div class="empty"><h2>'+(channels.length?'有什么我可以帮忙的？':'先配置接口')+'</h2>'+(channels.length?'<p>'+sub+'</p><div class="empty-pills"><button class="ep" data-ep="帮我写一个单文件 HTML 工具">写代码 / 文件</button><button class="ep" data-ep="帮我总结并分析一下重点">深度分析</button><button class="ep" data-ep-web="今天最新的科技热点新闻有哪些？">🌐 联网查最新消息</button></div>':'<p>点左上角菜单 → 右下角头像进入设置添加 API Key</p>')+'</div>';
     $('#toBot').classList.remove('on');
     return}
-  codeStore=[];
   IN.innerHTML=msgs.map(msgHtml).join('');
   L.scrollTop=(force||near)?L.scrollHeight:y;
   updateToBot()}
