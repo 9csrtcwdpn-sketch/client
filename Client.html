@@ -628,6 +628,7 @@ label:first-child{margin-top:0}
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
     </button>
   </div>
+  <div class="d-stats" id="dStats"></div>
   <div class="d-search-wrap" id="searchWrap"><input id="qhist" type="search" placeholder="搜索对话…"></div>
   <div class="d-nav">
     <button class="d-item" data-nav="lib">
@@ -647,7 +648,6 @@ label:first-child{margin-top:0}
       <span>GitHub 仓库直连</span><span class="badge" id="b-gh"></span>
     </button>
   </div>
-  <div class="d-stats" id="dStats"></div>
   <div class="d-list" id="dlist"></div>
   <div class="d-foot">
     <button class="new-pill" id="dNewBtn">
@@ -1802,8 +1802,8 @@ function renderTokenStats(){
     '<div class="ds-r"><span>聊天</span><span>'+fmtTok(us.tokIn)+' / '+fmtTok(us.tokOut)+'</span></div>'+
     '<div class="ds-r" id="dOcTok"><span>OpenCode</span><span>读取中…</span></div>';
 }
-async function loadOcToken(){
-  const el=$('#dOcTok');if(!el)return;
+async function loadOcToken(sel='#dOcTok'){
+  const el=$(sel);if(!el)return;
   const c=new AbortController();const tm=setTimeout(()=>c.abort(),2500);
   try{
     const r=await fetch(ocCleanUrl()+'/api/experimental/session/stats',{headers:{'Accept':'application/json'},signal:c.signal});
