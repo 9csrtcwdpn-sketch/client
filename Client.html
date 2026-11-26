@@ -535,12 +535,13 @@ label:first-child{margin-top:0}
 <body>
 <div id="app">
   <header>
-    <button class="g-btn" id="hist" title="菜单" aria-label="菜单">
-      <svg viewBox="0 0 24 24"><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="14" y2="15"/></svg>
-    </button>
-    <div class="seg" id="tabSeg">
-      <button data-tab="chat" class="on">聊天</button>
-      <button data-tab="oc">OpenCode</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="g-btn" id="hist" title="菜单" aria-label="菜单">
+        <svg viewBox="0 0 24 24"><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="14" y2="15"/></svg>
+      </button>
+      <button class="g-btn" id="backOc" title="返回 OpenCode" aria-label="返回 OpenCode" style="display:none">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
     </div>
     <div class="top-right">
       <button id="new" title="新对话" aria-label="新对话">
@@ -632,6 +633,10 @@ label:first-child{margin-top:0}
   <div class="d-stats" id="dStats"></div>
   <div class="d-search-wrap" id="searchWrap"><input id="qhist" type="search" placeholder="搜索对话…"></div>
   <div class="d-nav">
+    <button class="d-item" data-nav="chat">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>聊天</span>
+    </button>
     <button class="d-item" data-nav="lib">
       <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       <span>资料库</span><span class="badge" id="b-lib"></span>
@@ -815,7 +820,7 @@ let cfg=Object.assign({
   ctxOn:true,ctxTurns:30,memOn:false,autoExpandThink:false,autoExpandCode:false,
   effort:2,dsNativeParams:true,temp:1.0,maxTokens:0,
   webOn:false,webProvider:'auto',webKey:'',webUrl:'',
-  tab:'chat',ocUrl:'http://127.0.0.1:4096',ghRepo:'9csrtcwdpn-sketch/client',ghToken:'',
+  tab:'oc',ocUrl:'http://127.0.0.1:4096',ghRepo:'9csrtcwdpn-sketch/client',ghToken:'',
   priceCustom:false,priceMiss:0,priceHit:0,priceOut:0,fxRate:7.2,
   theme:'auto',nick:'',style:'',sys:''
 },ls.get('cfg',{}));
@@ -1370,7 +1375,7 @@ function msgHtml(m,i){
 
 function syncBarUI(){
   const ef=curEff(),isOc=cfg.tab==='oc';
-  document.querySelectorAll('#tabSeg button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(isOc?'oc':'chat')));
+  $('#backOc').style.display=isOc?'none':'';
   $('#ocView').classList.toggle('on',isOc);
   $('#list').style.display=isOc?'none':'block';
   document.querySelector('.composer-wrap').style.display=isOc?'none':'block';
@@ -1572,11 +1577,7 @@ function openOcConfig(){
   $('#saveOc').onclick=()=>{cfg.ocUrl=$('#ocUrlIn').value.trim()||'http://127.0.0.1:4096';save();$('#smod').classList.remove('on');checkAndLoadOpenCode(true)};
   $('#closeMod').onclick=()=>$('#smod').classList.remove('on');
 }
-$('#tabSeg').onclick=e=>{
-  const b=e.target.closest('[data-tab]');if(!b)return;
-  cfg.tab=b.dataset.tab;save();syncBarUI();
-  if(cfg.tab==='oc')checkAndLoadOpenCode(false);
-};
+$('#backOc').onclick=()=>{cfg.tab='oc';save();syncBarUI();checkAndLoadOpenCode(false)};
 $('#ocReload').onclick=()=>checkAndLoadOpenCode(true);
 $('#ocRetry').onclick=()=>checkAndLoadOpenCode(true);
 $('#ocCfgBtn').onclick=openOcConfig;
@@ -1873,7 +1874,8 @@ $('#dlist').onclick=e=>{
 document.querySelector('.d-nav').onclick=e=>{
   const b=e.target.closest('[data-nav]');if(!b)return;
   const k=b.dataset.nav;closeDrawer();
-  if(k==='lib')openLibrary();
+  if(k==='chat'){cfg.tab='chat';save();syncBarUI();render();}
+  else if(k==='lib')openLibrary();
   else if(k==='prompts')openCustom();
   else if(k==='webcfg')openWebConfig();
   else if(k==='gh')openGitHubPanel();
@@ -2114,7 +2116,7 @@ $('#ps').onclick=async e=>{
     try{const ms=await listModels(c);if(!channels.includes(c))return;c.models=ms;if(sel?.ch===c.id&&!c.models.includes(sel.m))sel=null;save();toast('获取到 '+ms.length+' 个模型');const t=document.querySelector('.card[data-id="'+c.id+'"] [data-k=models]');if(t)t.value=ms.join('\n');render()}catch(err){toast(err.message.slice(0,80))}
     b.disabled=false;b.textContent='获取模型列表'}};
 
-render();if(cfg.tab==='oc')checkAndLoadOpenCode(false);if(!channels.length)setTimeout(()=>{if(!channels.length){channels.push({id:uid(),name:'我的接口',type:'openai',base:BASE.openai,key:'',models:[]});save();openApiModal()}},300);
+cfg.tab='oc';render();if(cfg.tab==='oc')checkAndLoadOpenCode(false);if(!channels.length)setTimeout(()=>{if(!channels.length){channels.push({id:uid(),name:'我的接口',type:'openai',base:BASE.openai,key:'',models:[]});save();openApiModal()}},300);
 </script>
 </body>
 </html>
