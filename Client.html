@@ -535,12 +535,11 @@ label:first-child{margin-top:0}
 <body>
 <div id="app">
   <header>
-    <button class="g-btn" id="hist" title="菜单" aria-label="菜单">
-      <svg viewBox="0 0 24 24"><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="14" y2="15"/></svg>
-    </button>
-    <div class="seg" id="tabSeg">
-      <button data-tab="chat" class="on">聊天</button>
-      <button data-tab="oc">OpenCode</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="g-btn" id="hist" title="菜单" aria-label="菜单">
+        <svg viewBox="0 0 24 24"><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="14" y2="15"/></svg>
+      </button>
+      <button class="oc-btn" id="backOcBtn" style="display:none;height:36px;padding:0 12px;border-radius:18px;font-weight:500" title="返回 OpenCode">← OpenCode</button>
     </div>
     <div class="top-right">
       <button id="new" title="新对话" aria-label="新对话">
@@ -568,6 +567,7 @@ label:first-child{margin-top:0}
       <p style="font-size:12px">当前地址：<span id="ocUrlShow">http://127.0.0.1:4096</span></p>
       <div class="oc-empty-acts">
         <button class="oc-btn pri" id="ocRetry">重试连接</button>
+        <button class="oc-btn" id="ocForceLoad">直接加载</button>
         <button class="oc-btn" id="ocEditUrl">修改连接地址</button>
         <button class="oc-btn" id="ocDirectOpen">新标签页打开</button>
       </div>
@@ -632,6 +632,14 @@ label:first-child{margin-top:0}
   <div class="d-stats" id="dStats"></div>
   <div class="d-search-wrap" id="searchWrap"><input id="qhist" type="search" placeholder="搜索对话…"></div>
   <div class="d-nav">
+    <button class="d-item" data-nav="chat">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>聊天</span><span class="badge" id="b-chat"></span>
+    </button>
+    <button class="d-item" data-nav="oc">
+      <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      <span>OpenCode</span><span class="badge" id="b-oc"></span>
+    </button>
     <button class="d-item" data-nav="lib">
       <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       <span>资料库</span><span class="badge" id="b-lib"></span>
@@ -815,10 +823,11 @@ let cfg=Object.assign({
   ctxOn:true,ctxTurns:30,memOn:false,autoExpandThink:false,autoExpandCode:false,
   effort:2,dsNativeParams:true,temp:1.0,maxTokens:0,
   webOn:false,webProvider:'auto',webKey:'',webUrl:'',
-  tab:'chat',ocUrl:'http://127.0.0.1:4096',ghRepo:'9csrtcwdpn-sketch/client',ghToken:'',
+  tab:'oc',ocUrl:'http://127.0.0.1:4096',ghRepo:'9csrtcwdpn-sketch/client',ghToken:'',
   priceCustom:false,priceMiss:0,priceHit:0,priceOut:0,fxRate:7.2,
   theme:'auto',nick:'',style:'',sys:''
 },ls.get('cfg',{}));
+cfg.tab='oc';
 if(cfg.effort>3)cfg.effort=3;
 if(cfg.effort<0)cfg.effort=0;
 let mems=ls.get('mems',[]);
@@ -1370,7 +1379,7 @@ function msgHtml(m,i){
 
 function syncBarUI(){
   const ef=curEff(),isOc=cfg.tab==='oc';
-  document.querySelectorAll('#tabSeg button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(isOc?'oc':'chat')));
+  const backBtn=$('#backOcBtn');if(backBtn)backBtn.style.display=isOc?'none':'inline-flex';
   $('#ocView').classList.toggle('on',isOc);
   $('#list').style.display=isOc?'none':'block';
   document.querySelector('.composer-wrap').style.display=isOc?'none':'block';
@@ -1536,6 +1545,14 @@ $('#effortTrigger').onclick=openEffort;
 /* ---- OpenCode 本地/远程后端工作台 ---- */
 let ocLoadedUrl='';
 function ocCleanUrl(){return(cfg.ocUrl||'http://127.0.0.1:4096').trim().replace(/\/+$/,'')}
+function showOcFrame(u,forceReload=false){
+  $('#ocDot').className='oc-dot ok';
+  $('#ocStTxt').textContent='OpenCode 已连接（'+u+'）';
+  $('#ocEmpty').style.display='none';
+  const fr=$('#ocFrame');
+  if(forceReload||ocLoadedUrl!==u){fr.src=u;ocLoadedUrl=u}
+  fr.classList.add('on');
+}
 async function checkAndLoadOpenCode(forceReload=false){
   const u=ocCleanUrl();
   $('#ocUrlShow').textContent=u;
@@ -1543,15 +1560,10 @@ async function checkAndLoadOpenCode(forceReload=false){
   $('#ocStTxt').textContent='正在连接 '+u+' …';
   try{
     const c=new AbortController();const tm=setTimeout(()=>c.abort(),3500);
-    const r=await fetch(u,{signal:c.signal});
+    const r=await fetch(u,{mode:'no-cors',cache:'no-store',signal:c.signal});
     clearTimeout(tm);
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    $('#ocDot').className='oc-dot ok';
-    $('#ocStTxt').textContent='OpenCode 已连接（'+u+'）';
-    $('#ocEmpty').style.display='none';
-    const fr=$('#ocFrame');
-    if(forceReload||ocLoadedUrl!==u){fr.src=u;ocLoadedUrl=u}
-    fr.classList.add('on');
+    if(r.type!=='opaque'&&!r.ok)throw new Error('HTTP '+r.status);
+    showOcFrame(u,forceReload);
   }catch{
     $('#ocDot').className='oc-dot err';
     $('#ocStTxt').textContent='未检测到 OpenCode 服务';
@@ -1572,11 +1584,9 @@ function openOcConfig(){
   $('#saveOc').onclick=()=>{cfg.ocUrl=$('#ocUrlIn').value.trim()||'http://127.0.0.1:4096';save();$('#smod').classList.remove('on');checkAndLoadOpenCode(true)};
   $('#closeMod').onclick=()=>$('#smod').classList.remove('on');
 }
-$('#tabSeg').onclick=e=>{
-  const b=e.target.closest('[data-tab]');if(!b)return;
-  cfg.tab=b.dataset.tab;save();syncBarUI();
-  if(cfg.tab==='oc')checkAndLoadOpenCode(false);
-};
+const backOcBtn=$('#backOcBtn');
+if(backOcBtn)backOcBtn.onclick=()=>{cfg.tab='oc';save();syncBarUI();checkAndLoadOpenCode(false)};
+$('#ocForceLoad').onclick=()=>showOcFrame(ocCleanUrl(),true);
 $('#ocReload').onclick=()=>checkAndLoadOpenCode(true);
 $('#ocRetry').onclick=()=>checkAndLoadOpenCode(true);
 $('#ocCfgBtn').onclick=openOcConfig;
@@ -1720,8 +1730,9 @@ $('#send').onclick=()=>busy&&ctl?ctl.abort():send();
 
 function newChat(){
   if(busy){toast('正在生成，先点 ■ 停止');return}
+  if(cfg.tab==='oc'){cfg.tab='chat';save();syncBarUI();if(!msgs.length){render(true);return}}
   if(!msgs.length){toast('已经是全新独立对话');return}
-  const c=newConv();convs.unshift(c);cid=c.id;msgs=c.msgs;openCodeKeys.clear();save();render(true);toast('已新建独立对话')}
+  const c=newConv();convs.unshift(c);cid=c.id;msgs=c.msgs;cfg.tab='chat';openCodeKeys.clear();save();render(true);toast('已新建独立对话')}
 $('#new').onclick=newChat;
 $('#dNewBtn').onclick=()=>{closeDrawer();newChat()};
 
@@ -1839,6 +1850,8 @@ async function loadOcToken(sel='#dOcTok'){
 function drawDrawer(){
   $('#duav').textContent=(cfg.nick||'我').slice(0,1);
   const libCount=collectLibrary().length;
+  $('#b-chat').textContent=cfg.tab==='chat'?'当前':'';
+  $('#b-oc').textContent=cfg.tab==='oc'?'当前':'';
   $('#b-lib').textContent=libCount?(libCount+''):'';
   $('#b-web').textContent=cfg.webKey?'已配 Key':'免 Key';
   $('#b-gh').textContent=cfg.ghToken?'已连接':'未配置';
@@ -1866,14 +1879,16 @@ $('#dlist').onclick=e=>{
   if(v){
     if(busy){toast('正在生成，先点 ■ 停止');return}
     const c=convs.find(x=>x.id===v.dataset.v);
-    if(c){cid=c.id;msgs=c.msgs;openCodeKeys.clear();save();render(true)}
+    if(c){cid=c.id;msgs=c.msgs;cfg.tab='chat';openCodeKeys.clear();save();render(true)}
     closeDrawer();
   }
 };
 document.querySelector('.d-nav').onclick=e=>{
   const b=e.target.closest('[data-nav]');if(!b)return;
   const k=b.dataset.nav;closeDrawer();
-  if(k==='lib')openLibrary();
+  if(k==='chat'){cfg.tab='chat';save();syncBarUI();render();}
+  else if(k==='oc'){cfg.tab='oc';save();syncBarUI();checkAndLoadOpenCode(false);}
+  else if(k==='lib')openLibrary();
   else if(k==='prompts')openCustom();
   else if(k==='webcfg')openWebConfig();
   else if(k==='gh')openGitHubPanel();
